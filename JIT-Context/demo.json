@@ -1,0 +1,30 @@
+{
+    "directed": true,
+    "multigraph": true,
+    "graph": {},
+    "nodes": [
+        {
+            "nodeType": "expression_statement",
+            "startRow": 0,
+            "endRow": 3,
+            "sourceLines": [
+                "XMLHelper.parse(srcURL, null, new DefaultHandler() {\n",
+                "    private String _organisation = null;\n",
+                "    private String _justOpen = null;\n",
+                "      });"
+            ],
+            "defSet": [
+                "_organisation",
+                "_justOpen"
+            ],
+            "useSet": [
+                "srcURL",
+                "DefaultHandler",
+                "XMLHelper",
+                "parse"
+            ],
+            "id": 0
+        }
+    ],
+    "links": []
+}
