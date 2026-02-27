@@ -6,8 +6,8 @@ import networkx as nx
 
 class CONSTANTS:
     projects_dir = f"./Dataset"
-    cfg_max_hop = 1
-    ddg_max_hop = 1
+    cdg_max_hop = 1
+    ddg_max_hop = 2
     max_statement = 10
     graph_database_save_dir = "./graph_database"
     repository_dir='./repository'
@@ -34,7 +34,7 @@ def graph_to_json(obj: nx.MultiDiGraph):
 
 
 def preprocess_code_line(code):
-    code = code.replace('\n', ' ').replace('(', ' ').replace(')', ' ').replace('{', ' ').replace('}', ' ').replace('[', ' ').replace(']',
+    code = code.replace('(', ' ').replace(')', ' ').replace('{', ' ').replace('}', ' ').replace('[', ' ').replace(']',
                                                                                                                   ' ').replace(
         '.', ' ').replace(':', ' ').replace(';', ' ').replace(',', ' ').replace(' _ ', '_')
 

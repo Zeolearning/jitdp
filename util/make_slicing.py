@@ -34,30 +34,34 @@ class CCGBuilder:
               
         return
     
-    def build_slicing_graph(self, file_line,line_set,ccg):
+    def build_slicing_graph(self, file_line,line_set,ccg,buggy_lines=set()):
         slicer = Slicing()
         all_statement = set()
-        # get graph
-        if ccg is None:
-            return None,None,None
+        buggy_nodes=set()
         filter_dict=dict()
         visit_set=set()
+        # get graph
+        if ccg is None:
+            return filter_dict,all_statement,visit_set,buggy_nodes
         # slicing for each statement
         for v in ccg.nodes:
-            
             if not (ccg.nodes[v]['startRow'] <= file_line and ccg.nodes[v]['endRow'] >= file_line): 
                 continue
             visit_set.add(v)
+
             startline=ccg.nodes[v]['startRow']
+            if file_line+1 in buggy_lines: 
+                buggy_nodes.add(v)
+            
+
             
 
             _,forward_filter_ctx, _, forward_statement = slicer.forward_dependency_slicing(v, ccg,
-                                                                        line_set,contain_node=True)
+                                                                        line_set)
             _, backward_filter_ctx,_,backward_statement= slicer.backward_dependency_slicing(v, ccg,
-                                                                        line_set,contain_node=False)
+                                                                        line_set)
 
             all_statement = all_statement.union(forward_statement).union(backward_statement)
-
             if "key_forward_context" not in filter_dict:
                 filter_dict["key_forward_context"]=forward_filter_ctx
             else :
@@ -77,7 +81,8 @@ class CCGBuilder:
 
         line_set.sort()
        
-        return filter_dict,all_statement,visit_set
+        return filter_dict,all_statement,visit_set,buggy_nodes
+
 
 
 
@@ -100,16 +105,15 @@ if __name__ == '__main__':
     name_line_set=dict()
     name_line_set[file_path]=line_set
     merge=list()
-    buggy_lines=[172,173,174]
+    buggy_lines=[45,47,49,50,51,52]
     all_statement=set()
     file_name=file_path
     with open(file_name, 'r',encoding='utf-8') as f:
         src_lines = f.readlines()
     ccg = create_graph(src_lines)
     for file_line in buggy_lines:
-        
         print(f'Processing repo {file_path} at line {file_line}...')
-        result,that_statement,_=graph_db_builder.build_slicing_graph(file_line-1,name_line_set[file_path],ccg)
+        result,that_statement,_,_=graph_db_builder.build_slicing_graph(file_line-1,name_line_set[file_path],ccg)
         all_statement=all_statement.union(that_statement)
         
         if(len(result)>0):

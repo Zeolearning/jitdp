@@ -1,11 +1,11 @@
-.env
 *.pt
 tree-sitter-java/
 my-languages.exp
 my-languages.lib
 my-languages.so
-Dataset/
+Dataset/*
 cross_project_dataset/
 repository/
 *.zip
 *.log
+*/temp_output

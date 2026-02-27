@@ -37,7 +37,8 @@ def get_git_diff(repo_path, ref1='HEAD', ref2=None):
         cmd.extend([str(ref1), str(ref2)])
     else:
         cmd.append(str(ref1))
-
+    cmd.append('--')
+    cmd.append('*.java')
     result = subprocess.run(
         cmd,
         cwd=repo_path,
@@ -238,7 +239,7 @@ def getSlice(project,inner_file_path,commit_hash,target_lines):
             traceback.print_exc()
             exit(1)
         for file_line in target_lines:
-            result,_,_=graph_db_builder.build_slicing_graph(int(file_line)-1,line_set,ccg)
+            result,_,_,_=graph_db_builder.build_slicing_graph(int(file_line)-1,line_set,ccg)
             if(len(result)>0):
                 merge+=result["key_forward_context"]+result["key_backward_context"]
 

@@ -28,14 +28,14 @@ def java_control_dependence_graph(root_node, CCG, src_lines, parent):
                              useSet=set())
                 CCG.add_edge(parent, node_id, 'CDG')
                 # parent = node_id
-    elif root_node.type in ['class_declaration', 'method_declaration', 'field_declaration','enum_declaration', 'interface_declaration',"constructor_declaration"]:
+    elif root_node.type in ['class_declaration', 'method_declaration', 'field_declaration','enum_declaration', 'interface_declaration',"constructor_declaration",'annotation_type_declaration']:
         if root_node.type in['method_declaration',"constructor_declaration"]:
             start_row = root_node.start_point[0]
             end_row = root_node.child_by_field_name('parameters').end_point[0]
         elif root_node.type in ['enum_declaration']:
             start_row = root_node.start_point[0]
             end_row = root_node.child_by_field_name('name').end_point[0]
-        elif root_node.type in ['interface_declaration','class_declaration']:
+        elif root_node.type in ['interface_declaration','class_declaration','annotation_type_declaration']:
             start_row = root_node.start_point[0]
             end_row = root_node.child_by_field_name('body').start_point[0]
             
@@ -120,7 +120,7 @@ def java_control_dependence_graph(root_node, CCG, src_lines, parent):
                              useSet=set())
                 CCG.add_edge(parent, node_id, 'CDG')
                 parent = node_id
-    elif root_node.type in ['else', 'except_clause', 'catch_clause', 'finally_clause']:
+    elif root_node.type in ['else', 'except_clause', 'catch_clause', 'finally_clause',"labeled_statement",'annotation']:
         start_row = root_node.start_point[0]
         end_row = root_node.start_point[0]
         if root_node.type=='else' and root_node.parent.child_by_field_name('alternative')!=None and root_node.parent.child_by_field_name('alternative').type=='if_statement':
@@ -400,7 +400,7 @@ def java_control_flow_graph(CCG):
             
             p = list(CCG.predecessors(v))[0]
             
-            while CCG.nodes[p]['nodeType'] not in ['for_statement', 'while_statement','enhanced_for_statement','do_statement','switch_expression']:
+            while CCG.nodes[p]['nodeType'] not in ['for_statement', 'while_statement','enhanced_for_statement','do_statement','switch_expression',"labeled_statement"]:
                 p = list(CCG.predecessors(p))[0]
 
             if CCG.nodes[v]['nodeType'] == 'break_statement':
@@ -551,7 +551,7 @@ def create_graph(code_lines):
         return None
 
     #remove comment
-    comment_lines = []
+
     i=0
     in_block_comment=False
     while i < len(src_lines):
@@ -559,16 +559,13 @@ def create_graph(code_lines):
         stripped = line.lstrip()
 
         if in_block_comment :
-            comment_lines.append(i)
-            src_lines[i] = '\n'
+            code_lines[i] = '\n'
             if '*/' in stripped:
                 in_block_comment = False
         elif stripped.startswith('//'):
-            comment_lines.append(i)
-            src_lines[i] = '\n'
+            code_lines[i] = '\n'
         elif stripped.startswith('/*'):
-            comment_lines.append(i)
-            src_lines[i] = '\n'
+            code_lines[i] = '\n'
             if '*/' not in stripped:
                 in_block_comment = True
         else:
@@ -586,7 +583,7 @@ def create_graph(code_lines):
                         continue
                     if not line.rstrip().endswith("*/"):
                         in_block_comment=True
-                    src_lines[i] = line[:comment_start] + '\n' if line.endswith('\n') else line[:comment_start]
+                    code_lines[i] = line[:comment_start] + '\n' if line.endswith('\n') else line[:comment_start]
         i += 1
 
     # Parser file to get a tree

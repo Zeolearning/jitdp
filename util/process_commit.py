@@ -68,7 +68,7 @@ def parse_cmd_diff(cmd_output):
                 else :
                     continue
                 current_remove_line=new_start_a - 1
-                current_add_line = new_start_b - 1  # 补偿初始自增
+                current_add_line = new_start_b - 1  
             elif line.startswith('+') and not line.startswith("+++"):
                 current_add_line += 1
                 add_code[str(current_add_line)]=line
@@ -97,155 +97,11 @@ def process_diff(project,parent_hash,commit_hash):
     datas=parse_cmd_diff(cmd_output)
     return datas
 
-def parse_divergent_data(repo_name,parent_hash,commit_hash)->list[dict]:
-    '''根据repo和hash使用divergent进行解耦
-        解耦之后解析输出为：
-        [
-            {
-                file_path:{
-                            add_line:list(),
-                            remove_line:list()
-                        },
-                file_path:{}...
-            },
-            {},...
-        ]
-    '''
-    divergent_output=f"./util/temp_output/groups/{repo_name}_{commit_hash}.json"
-    if not os.path.exists(divergent_output):
-        cmd = ['java', '-jar','./util/divergent.jar','-o',"./util/temp_output","-b","./Dataset","-r",repo_name,"-c",str(commit_hash),"-p",str(parent_hash)]
-        try:
-            subprocess.run(
-                cmd,
-                cwd="./",
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                text=True,
-                encoding='utf-8',        
-                errors='replace' 
-            )
-        except Exception as e:
-            traceback.print_exc()
-            exit(1)
 
-    group_res=list()
-    if not os.path.exists(divergent_output):
-        return None
-    with open(divergent_output,"r") as js:
-        groups=json.load(js)
-        for group in groups:
-            this_group_datas=dict()
-            for diff_block in group:
-                file_path=None
-                if "rightPath" in diff_block :
-                    file_path=diff_block["rightPath"]
-                if file_path is None:
-                    file_path=diff_block["leftPath"]
-                if file_path is None:
-                    raise ValueError(repo_name,"in hash",commit_hash,"cannot find filepath")
-                if not file_path.endswith(".java"):
-                    continue
-                
-                add_line=[]
-                remove_line=[]
-                
-                left_begin=diff_block.get("leftBegin", None)
-                left_end=diff_block.get("leftEnd", None)
-                if left_begin and left_end and left_begin<=left_end:
-                    remove_line.extend(range(left_begin, left_end + 1))
 
-                right_begin=diff_block.get("rightBegin", None)
-                right_end=diff_block.get("rightEnd", None)
-                if right_begin and right_end and right_begin<=right_end:
-                    add_line.extend(range(right_begin, right_end + 1))
-                
-                if file_path not in this_group_datas:
-                    line_data={
-                        "add_line":add_line,
-                        "remove_line":remove_line
-                    }
-                    this_group_datas[file_path]=line_data
-                else:
-                    this_group_datas[file_path]["add_line"].extend(add_line)
-                    this_group_datas[file_path]["remove_line"].extend(remove_line)
-            group_res.append(this_group_datas)
-    return group_res 
-   
 
-def prepare_meta(repo_name,parent_hash,commit_hash):
+def prepare_meta_context(repo_name,parent_hash,commit_hash):
     origin_diff=process_diff(repo_name,parent_hash,commit_hash)
-    groups_diff=parse_divergent_data(repo_name,parent_hash,commit_hash)
-    if groups_diff is None:
-        return prepare_meta_not_divergent(repo_name,parent_hash,commit_hash)
-    
-    groups=[]
-    for group in groups_diff:
-        group_meta=[]
-        for path, value in group.items():
-            add_lines=value["add_line"]
-
-            remove_lines=value["remove_line"]
-            if path in  origin_diff:
-                line_dict=origin_diff[path] 
-            else:
-                continue
-            try:
-                add_codes = [line_dict["add_code"][str(add_line)] for add_line in add_lines if str(add_line) in line_dict["add_code"]]
-                remove_codes=[line_dict["remove_code"][str(remove_line)] for remove_line in remove_lines if str(remove_line) in line_dict["remove_code"]]
-            except Exception as e :
-                print(e)
-                print(repo_name+"_"+commit_hash)
-                exit()
-            slices=run_getSlice(repo_name,path,commit_hash,add_lines)
-
-            data={
-                "file_path":path,
-                "add_codes":add_codes,
-                "remove_codes":remove_codes,
-                "slices":slices
-            }
-            group_meta.append(data)
-        groups.append(group_meta)
-    return groups
-
-def prepare_meta_not_slice(repo_name,parent_hash,commit_hash):
-    origin_diff=process_diff(repo_name,parent_hash,commit_hash)
-    groups_diff=parse_divergent_data(repo_name,parent_hash,commit_hash)
-    groups=[]
-    for group in groups_diff:
-        group_meta=[]
-        for path, value in group.items():
-            add_lines=value["add_line"]
-
-            remove_lines=value["remove_line"]
-            if path in  origin_diff:
-                line_dict=origin_diff[path] 
-            else:
-                continue
-            try:
-                add_codes = [line_dict["add_code"][str(add_line)] for add_line in add_lines if str(add_line) in line_dict["add_code"]]
-                remove_codes=[line_dict["remove_code"][str(remove_line)] for remove_line in remove_lines if str(remove_line) in line_dict["remove_code"]]
-            except Exception as e :
-                print(e)
-                print(repo_name+"_"+commit_hash)
-                exit()
-            data={
-                "file_path":path,
-                "add_codes":add_codes,
-                "remove_codes":remove_codes,
-            }
-            group_meta.append(data)
-        groups.append(group_meta)
-    return groups
-
-
-
-
-
-def prepare_meta_not_divergent(repo_name,parent_hash,commit_hash):
-    origin_diff=process_diff(repo_name,parent_hash,commit_hash)
-
-    groups=[]
     group=[]
     for path, value in origin_diff.items():
         add_metas=value["add_code"]
@@ -261,8 +117,16 @@ def prepare_meta_not_divergent(repo_name,parent_hash,commit_hash):
             "slices":slices
         }
         group.append(data)
-    groups.append(group)
-    return groups
+    return group
+
+def prepare_data_simple(repo_name,parent_hash,commit_hash):
+    project_path = Path(CONSTANTS.projects_dir)/repo_name
+    if not os.path.exists(project_path):
+        print(f"Project path does not exist: {project_path}")
+        exit(1)
+    cmd_output = get_git_diff(project_path, parent_hash, commit_hash)
+    
+    return cmd_output
 
 def clean_line_construc():
     with open(CONSTANTS.repository_dir+'/knowledge_clean.csv', 'w', newline='', encoding='utf-8') as f:
@@ -281,7 +145,7 @@ def clean_line_construc():
                 if_bug_commit=row['is_buggy_commit']==1.0
                 if if_bug_commit:
                     continue
-                groups=prepare_meta_not_divergent(project,parent_hash,commit_hash)
+                groups=prepare_meta_context(project,parent_hash,commit_hash)
                 slice=groups[0][0]["slices"]
                 diff=groups[0][0]["add_codes"]
                 if len(slice)==0 or len(slice)>18000:
@@ -294,100 +158,72 @@ def clean_line_construc():
                 continue
 
 
+def remove_common_lines(lines):
+    res=[]
+    for line in lines:
+        not_first_char=line[1:].strip()
+        if not_first_char.startswith("//") or not_first_char.startswith("/*") or not_first_char.startswith("*") or len(not_first_char)==0:
+            continue
+        res.append(not_first_char)
+        
+    return res
 
 
+def addEmptyData(repo_name,commit_hash,add_codes,remove_codes,output_path):
+    data={
+        "project":repo_name,
+        "commit_hash":commit_hash,
+        "file_path":"",
+        "add_codes":add_codes,
+        "remove_codes":remove_codes,
+        "relate_graph":None,
+        "diff_node":set(),
+        "buggy_nodes":set(),
+        "label":0,
+    }
+    with open(output_path, 'a', encoding='utf-8') as f:
+        f.write(json.dumps(data,default=set_default, ensure_ascii=False) + '\n')
+    
 
 def prepare_graph(repo_name,parent_hash,commit_hash,label,output_path):
-    '''
-    输出：
-        jsonl文件，每个line是一个dict，包含project,commit_hash,file_path,add_lines,remove_lines,graph,label
-    '''
-    
+    project_path = Path(CONSTANTS.projects_dir)/repo_name
+    checkout_hash(project_path,commit_hash)
+
     buggy_info_path=Path(CONSTANTS.repository_dir+'/repository_lines.json')
     buggy_info=dict()
     if label:
         with open(buggy_info_path,'r')as f:
             buggy_info=json.load(f)[repo_name+":"+commit_hash]
-    
-    groups_diff=parse_divergent_data(repo_name,parent_hash,commit_hash)
-    
-    if groups_diff is None:
-        return prepare_graph_not_divergent(repo_name,parent_hash,commit_hash,label,output_path)
-    project_path = Path(CONSTANTS.projects_dir)/repo_name
-    checkout_hash(project_path,commit_hash)
-    for group in groups_diff:
-        for path, value in group.items():
-            add_lines=set(value.get("add_line", []))
-            remove_lines=set(value.get("remove_line",[]))
-            if(len(add_lines)==0):
-                continue
-            if buggy_info is not None:
-                if path in buggy_info:
-                    bug_lines=set(ast.literal_eval(buggy_info[path]))
-                    label=1 if len(bug_lines.intersection(add_lines))>0 else 0
-            
-            file_path=Path(CONSTANTS.projects_dir)/repo_name/path
-            graph_db_builder = CCGBuilder()
-            line_set=list()
-            all_statement=set()
-            src_lines=[]
-            with open(file_path, 'r',encoding='latin1') as f:
-                src_lines = f.readlines()
-                
-
-            diff_nodes=set()
-
-            try:
-                ccg = create_graph(src_lines)
-            except:
-                raise RuntimeError(f'{file_path}')
-            if ccg is None:
-                continue
-            for file_line in add_lines:
-                try:
-                    _,that_statement,visit_set=graph_db_builder.build_slicing_graph(file_line-1,line_set,ccg)
-                except:
-                    print(file_path,file_line)
-                    raise RuntimeError(f'{file_path} {file_line}')
-                
-                if visit_set is None:
-                    continue
-                diff_nodes=diff_nodes.union(visit_set)
-                if that_statement is None:
-                    continue
-                all_statement=all_statement.union(that_statement)
-                
-            if all_statement is None:
-                continue
-            relate_graph = nx.subgraph(ccg, all_statement)
-            graph_dict=json_graph.node_link_data( relate_graph)
-
-            data={
-                "project":repo_name,
-                "commit_hash":commit_hash,
-                "file_path":path,
-                "add_lines":add_lines,
-                "remove_lines":remove_lines,
-                "relate_graph":graph_dict,
-                "diff_node":diff_nodes,
-                "label":label,
-            }
-            with open(output_path, 'a', encoding='utf-8') as f:
-                f.write(json.dumps(data,default=set_default, ensure_ascii=False) + '\n')
-
-
-    
-def prepare_graph_not_divergent(repo_name,parent_hash,commit_hash,label,output_path):
-    project_path = Path(CONSTANTS.projects_dir)/repo_name
-    checkout_hash(project_path,commit_hash)
 
     origin_diff=process_diff(repo_name,parent_hash,commit_hash)
     for path,value in origin_diff.items():
-        add_lines=set([int(k) for k in value["add_code"].keys()])
-        remove_lines=set([int(k) for k in value["add_code"].keys()])
+        add_lines=list([int(k) for k in value["add_code"].keys()])
+        remove_lines=list([int(k) for k in value["remove_code"].keys()])
+        add_lines.sort()
+        remove_lines.sort()
+
+
+
+        line_dict=origin_diff[path] 
+        add_codes = [line_dict["add_code"][str(add_line)] for add_line in add_lines if str(add_line) in line_dict["add_code"]]
+        remove_codes=[line_dict["remove_code"][str(remove_line)] for remove_line in remove_lines if str(remove_line) in line_dict["remove_code"]]
+        
+        add_codes=remove_common_lines(add_codes)
+        remove_codes=remove_common_lines(remove_codes)
         if(len(add_lines)==0):
+            addEmptyData(repo_name,commit_hash,add_codes,remove_codes,output_path)
             continue
+        bug_lines=set()
+        buggy_nodes=set()
+
         file_path=Path(CONSTANTS.projects_dir)/repo_name/path
+        if buggy_info is not None:
+            if path in buggy_info:
+                bug_lines=set(ast.literal_eval(buggy_info[path]))
+                label=1 
+            else:
+                label=0
+
         graph_db_builder = CCGBuilder()
         line_set=list()
         all_statement=set()
@@ -400,20 +236,30 @@ def prepare_graph_not_divergent(repo_name,parent_hash,commit_hash,label,output_p
             ccg = create_graph(src_lines)
         except:
             raise RuntimeError(f'{file_path}')
+        if len(ccg.nodes)==0:
+            addEmptyData(repo_name,commit_hash,add_codes,remove_codes,output_path)
+            continue
         for file_line in add_lines:
-            _,that_statement,visit_set=graph_db_builder.build_slicing_graph(file_line-1,line_set,ccg)
+            _,that_statement,visit_set,buggy_node=graph_db_builder.build_slicing_graph(file_line-1,line_set,ccg,bug_lines)
             all_statement=all_statement.union(that_statement)
             diff_nodes=diff_nodes.union(visit_set)
+            buggy_nodes=buggy_nodes.union(buggy_node)
+        
         relate_graph = nx.subgraph(ccg, all_statement)
+        if len(relate_graph.nodes)==0:
+            addEmptyData(repo_name,commit_hash,add_codes,remove_codes,output_path)
+            continue
+
         graph_dict=json_graph.node_link_data(relate_graph)
         data={
             "project":repo_name,
             "commit_hash":commit_hash,
             "file_path":path,
-            "add_lines":add_lines,
-            "remove_lines":remove_lines,
-            "relate_graph":graph_dict,
+            "add_codes":add_codes,
+            "remove_codes":remove_codes,
+            "relate_graph":graph_dict if graph_dict else None,
             "diff_node":diff_nodes,
+            "buggy_nodes":buggy_nodes,
             "label":label,
         }
         with open(output_path, 'a', encoding='utf-8') as f:
@@ -443,17 +289,17 @@ def writegraph():
                 project=row['project']
                 parent_hash=row['parent_hashes']
                 commit_hash=row['commit_hash']
-                if commit_hash=='1314887fe657f21e1213788fd6084a485781f2f1':
-                    if_continue=False
-                if if_continue:
-                    continue
+                # if commit_hash=='4c561cc9f56296f6adf1328cc8c28a0294741a53':
+                #     if_continue=False
+                # if if_continue:
+                #     continue
                 label=int(row['is_buggy_commit'])
                 prepare_graph(project,parent_hash,commit_hash,label,output_path)
 
 
-#writegraph()
-if __name__=="__main__":
-    prepare_graph('parquet-mr','cfc91fc79e13bd640dcb6b6605750c92d11ccb64','00a5d5b55eac3c869291a5f6359af97a880ddfd4',0,Path(CONSTANTS.repository_dir)/'train_graph_dataset.jsonl')
+# writegraph()
+# if __name__=="__main__":
+#     prepare_graph('ant-ivy','138a20ef063fa3e2b97074f599124d2fcc94545d','2a5a07fcb1a24fded957d260f9a9df988323db19',1,Path(CONSTANTS.repository_dir)/'train_graph_dataset.jsonl')
 
 # clean_line_construc()
 # res=prepare_meta('ant-ivy','bac647543497f0aa2a9f92fe726e1eb18631b4cc','cc6ace18900eb92606b6a312cb1ac5c4ab5f435e')
