@@ -297,8 +297,9 @@ def writegraph():
                 prepare_graph(project,parent_hash,commit_hash,label,output_path)
 
 
-# writegraph()
-# if __name__=="__main__":
+
+if __name__=="__main__":
+    writegraph()
 #     prepare_graph('ant-ivy','138a20ef063fa3e2b97074f599124d2fcc94545d','2a5a07fcb1a24fded957d260f9a9df988323db19',1,Path(CONSTANTS.repository_dir)/'train_graph_dataset.jsonl')
 
 # clean_line_construc()

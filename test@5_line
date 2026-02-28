@@ -1,0 +1,3 @@
+F1: 0.6294, AUC: 0.9169, PCI@20%LOC: 0.8568, Effort@20%Recall: 0.0056, POpt: 0.9580
+Top-10-ACC: 0.2521, Top-5-ACC: 0.2613, Recall20%Effort: 0.1827, Effort@20%LOC: 0.3855, IFA: 10.7419
+Top-10-ACC-a: 0.1997, Top-5-ACC-a: 0.2070, Recall20%Effort-a: 0.1448, Effort@20%LOC-a: 8.6952, IFA-a: 16.9010
