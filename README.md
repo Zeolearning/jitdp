@@ -85,6 +85,31 @@ mkdir Dataset
 
 2. Inside `Dataset`, clone the project repositories used in the paper.
 
+
+```bash
+cd DataSet/
+git clone https://github.com/apache/commons-math.git
+git clone https://github.com/apache/commons-lang.git
+git clone https://github.com/apache/commons-configuration.git
+git clone https://github.com/apache/commons-collections.git
+git clone https://github.com/apache/ant-ivy.git
+git clone https://github.com/apache/commons-compress.git
+git clone https://github.com/apache/commons-io.git
+git clone https://github.com/apache/commons-net.git
+git clone https://github.com/apache/parquet-java parquet-mr
+git clone https://github.com/apache/commons-vfs.git
+git clone https://github.com/apache/opennlp.git
+git clone https://github.com/apache/commons-digester.git
+git clone https://github.com/apache/commons-dbcp.git
+git clone https://github.com/apache/giraph.git
+git clone https://github.com/apache/commons-jcs.git
+git clone https://github.com/apache/commons-bcel.git
+git clone https://github.com/apache/commons-codec.git
+git clone https://github.com/apache/commons-beanutils.git
+git clone https://github.com/apache/commons-validator.git
+git clone https://github.com/apache/gora.git
+git clone https://github.com/apache/commons-scxml.git
+```
 3. Run the preprocessing script:
 
 ```bash
